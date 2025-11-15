@@ -1,0 +1,1842 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows Compartido - Gaming Edition Fixed</title>
+    <script src="https://unpkg.com/peerjs@1.5.0/dist/peerjs.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+
+        #lobby {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        .lobby-container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #764ba2;
+        }
+
+        #gameContainer {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: #1a1a1a;
+        }
+
+        #playerInfo {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.95);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 1000;
+            font-size: 14px;
+            max-width: 220px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .player-item {
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+        }
+
+        .player-color {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: inline-block;
+            border: 2px solid white;
+        }
+
+        #customWindows {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0078d4 0%, #005a9e 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .taskbar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 48px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            gap: 5px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            z-index: 100;
+        }
+
+        .start-button {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-radius: 4px;
+        }
+
+        .start-button:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .taskbar-app {
+            height: 40px;
+            padding: 0 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: white;
+            font-size: 14px;
+        }
+
+        .taskbar-app:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .window {
+            position: absolute;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            min-width: 400px;
+            min-height: 300px;
+            overflow: hidden;
+            display: none;
+            z-index: 10;
+        }
+
+        .window.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .window-header {
+            height: 40px;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            cursor: move;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .window-title {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .window-control {
+            width: 45px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .window-control:hover {
+            background: #e0e0e0;
+        }
+
+        .window-control.close:hover {
+            background: #e81123;
+            color: white;
+        }
+
+        .window-content {
+            flex: 1;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .desktop-icon {
+            width: 80px;
+            text-align: center;
+            padding: 10px;
+            margin: 20px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s;
+            color: white;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            display: inline-block;
+        }
+
+        .desktop-icon:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .desktop-icon-image {
+            width: 48px;
+            height: 48px;
+            background: rgba(255,255,255,0.3);
+            margin: 0 auto 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .desktop-icon-label {
+            font-size: 12px;
+            word-wrap: break-word;
+        }
+
+        /* FOLDER STYLES */
+        .folder-window-content {
+            padding: 20px;
+            background: #f5f5f5;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, 100px);
+            gap: 20px;
+            align-content: start;
+        }
+
+        /* TETRIS STYLES */
+        .tetris-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background: #1a1a1a;
+            height: 100%;
+        }
+
+        .tetris-mode-selector {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .tetris-mode-btn {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .tetris-mode-btn:hover {
+            background: #5568d3;
+            transform: scale(1.05);
+        }
+
+        .tetris-mode-btn.active {
+            background: #4CAF50;
+        }
+
+        .tetris-game-area {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .tetris-board {
+            border: 3px solid #333;
+            background: #000;
+            display: grid;
+            grid-template-columns: repeat(10, 25px);
+            grid-template-rows: repeat(20, 25px);
+            gap: 1px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .tetris-cell {
+            width: 25px;
+            height: 25px;
+            background: #111;
+            border: 1px solid #222;
+        }
+
+        .tetris-cell.filled {
+            border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: inset 0 0 10px rgba(255,255,255,0.2);
+        }
+
+        .tetris-sidebar {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            min-width: 200px;
+        }
+
+        .tetris-score {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .tetris-level {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .tetris-player-indicator {
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tetris-player-indicator.active {
+            background: rgba(76, 175, 80, 0.3);
+            border: 2px solid #4CAF50;
+        }
+
+        .tetris-controls {
+            margin-top: 20px;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        /* CAPTCHA STYLES */
+        .captcha-container {
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .captcha-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #4285f4;
+        }
+
+        .captcha-progress {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .captcha-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4285f4, #34a853);
+            transition: width 0.3s;
+        }
+
+        .captcha-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .captcha-tile {
+            aspect-ratio: 1;
+            border: 3px solid #dadce0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            background: #f8f9fa;
+        }
+
+        .captcha-tile:hover {
+            border-color: #4285f4;
+            transform: scale(1.05);
+        }
+
+        .captcha-tile.selected {
+            border-color: #4285f4;
+            background: #e8f0fe;
+        }
+
+        .captcha-tile.correct {
+            border-color: #34a853;
+            background: #e6f4ea;
+        }
+
+        .captcha-tile.wrong {
+            border-color: #ea4335;
+            background: #fce8e6;
+        }
+
+        .captcha-btn {
+            width: 100%;
+            padding: 15px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 20px;
+        }
+
+        .captcha-btn:hover {
+            background: #1a73e8;
+        }
+
+        .cursor {
+            position: fixed;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10000;
+            transition: all 0.1s ease-out;
+            border: 3px solid white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.7);
+            transform: translate(-50%, -50%);
+        }
+
+        .cursor-label {
+            position: absolute;
+            top: 32px;
+            left: 32px;
+            background: rgba(0,0,0,0.95);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            font-weight: bold;
+        }
+
+        #yourId {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+            font-family: monospace;
+            word-break: break-all;
+            font-size: 11px;
+        }
+
+        .status {
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+
+        .copy-btn {
+            padding: 8px 15px;
+            font-size: 12px;
+            margin-top: 8px;
+            background: #4CAF50;
+            width: 100%;
+        }
+
+        .click-effect {
+            position: fixed;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9998;
+            animation: clickAnim 0.8s ease-out;
+            transform: translate(-50%, -50%);
+        }
+
+        @keyframes clickAnim {
+            0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+        }
+
+        #debugLog {
+            position: absolute;
+            bottom: 60px;
+            left: 10px;
+            background: rgba(0,0,0,0.95);
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 1001;
+            font-size: 11px;
+            font-family: monospace;
+            max-width: 350px;
+            max-height: 150px;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+        }
+
+        #debugLog.hidden {
+            transform: translateY(220px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 5px;
+            border-left: 3px solid #00ff00;
+            padding-left: 8px;
+        }
+
+        .log-send { border-left-color: #2196F3; color: #2196F3; }
+        .log-receive { border-left-color: #4CAF50; color: #4CAF50; }
+        .log-execute { border-left-color: #FF9800; color: #FF9800; }
+
+        #toggleLogBtn {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            z-index: 1002;
+            font-size: 12px;
+            cursor: pointer;
+            border: 2px solid #00ff00;
+            transition: all 0.2s;
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        #toggleLogBtn:hover {
+            background: rgba(0,255,0,0.2);
+            transform: scale(1.05);
+        }
+
+        #connectionStatus {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            z-index: 1001;
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-connected { background: #4CAF50; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div id="lobby">
+        <div class="lobby-container">
+            <h1>🪟 Windows Compartido</h1>
+            <p style="color: #666; margin-bottom: 15px;">
+                ✅ <strong>Gaming Edition (FIXED)</strong><br>
+                📊 PowerPoint + 🎮 Games Sincronizados<br>
+                👥 Juega con hasta 4 amigos
+            </p>
+            
+            <div class="button-group">
+                <button id="createBtn" onclick="createRoom()">🎮 Crear Sala</button>
+                <button id="joinBtn" onclick="showJoinForm()">🔗 Unirse</button>
+            </div>
+
+            <div id="joinForm" style="display: none; margin-top: 20px;">
+                <input type="text" id="roomId" placeholder="ID de la sala">
+                <button onclick="joinRoom()" style="width: 100%;">✅ Conectar</button>
+            </div>
+
+            <div id="yourId"></div>
+            <div class="status info" id="status">⏳ Crea o únete a una sala</div>
+        </div>
+    </div>
+
+    <div id="gameContainer">
+        <div id="connectionStatus">
+            <span class="status-dot status-connected"></span>
+            <span id="connText">Conectado</span>
+        </div>
+
+        <div id="playerInfo">
+            <h3 style="margin-bottom: 10px;">👥 Jugadores</h3>
+            <div id="playerList"></div>
+        </div>
+
+        <button id="toggleLogBtn" onclick="toggleLog()">
+            <span id="logBtnIcon">👁️</span> LOG
+        </button>
+
+        <div id="debugLog" class="hidden">
+            <strong style="color: white;">📊 LOG:</strong>
+            <div id="logEntries"></div>
+        </div>
+
+        <div id="customWindows">
+            <!-- DESKTOP ICONS -->
+            <div class="desktop-icon" ondblclick="openWindow('powerpoint')">
+                <div class="desktop-icon-image">📊</div>
+                <div class="desktop-icon-label">PowerPoint</div>
+            </div>
+            
+            <div class="desktop-icon" ondblclick="openFolder('games')">
+                <div class="desktop-icon-image">📁</div>
+                <div class="desktop-icon-label">Games</div>
+            </div>
+            
+            <div class="desktop-icon" ondblclick="openWindow('notepad')">
+                <div class="desktop-icon-image">📝</div>
+                <div class="desktop-icon-label">Notepad</div>
+            </div>
+
+            <!-- GAMES FOLDER WINDOW -->
+            <div id="gamesWindow" class="window" style="left: 150px; top: 150px; width: 500px; height: 400px;">
+                <div class="window-header" onmousedown="startDrag(event, 'gamesWindow')">
+                    <div class="window-title">📁 Games</div>
+                    <div class="window-controls">
+                        <div class="window-control" onclick="minimizeWindow('gamesWindow')">−</div>
+                        <div class="window-control close" onclick="closeWindow('gamesWindow')">×</div>
+                    </div>
+                </div>
+                <div class="window-content">
+                    <div class="folder-window-content">
+                        <div class="desktop-icon" ondblclick="openGameFromFolder('captcha')">
+                            <div class="desktop-icon-image" style="background: linear-gradient(135deg, #4285f4, #34a853);">🤖</div>
+                            <div class="desktop-icon-label" style="color: #333;">Captcha Game</div>
+                        </div>
+                        <div class="desktop-icon" ondblclick="openGameFromFolder('tetris')">
+                            <div class="desktop-icon-image" style="background: linear-gradient(135deg, #FF6B6B, #4ECDC4);">🎮</div>
+                            <div class="desktop-icon-label" style="color: #333;">Tetris</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TETRIS WINDOW -->
+            <div id="tetrisWindow" class="window" style="left: 100px; top: 50px; width: 900px; height: 700px;">
+                <div class="window-header" onmousedown="startDrag(event, 'tetrisWindow')">
+                    <div class="window-title">🎮 Tetris Multijugador</div>
+                    <div class="window-controls">
+                        <div class="window-control" onclick="minimizeWindow('tetrisWindow')">−</div>
+                        <div class="window-control close" onclick="closeWindow('tetrisWindow')">×</div>
+                    </div>
+                </div>
+                <div class="window-content">
+                    <div class="tetris-container">
+                        <div class="tetris-mode-selector">
+                            <button class="tetris-mode-btn active" id="chaosModeBtn" onclick="tetris.setMode('chaos')">
+                                🌀 Modo Caos<br><small>Todos controlan la misma pieza</small>
+                            </button>
+                            <button class="tetris-mode-btn" id="normalModeBtn" onclick="tetris.setMode('normal')">
+                                👥 Modo Normal<br><small>Cada jugador su pieza</small>
+                            </button>
+                        </div>
+                        
+                        <div class="tetris-game-area">
+                            <div class="tetris-sidebar">
+                                <div class="tetris-score">
+                                    Score: <span id="tetrisScore">0</span>
+                                </div>
+                                <div class="tetris-level">
+                                    Level: <span id="tetrisLevel">1</span>
+                                </div>
+                                <div class="tetris-level">
+                                    Lines: <span id="tetrisLines">0</span>
+                                </div>
+                                
+                                <div style="margin-top: 20px;">
+                                    <strong>Modo: <span id="tetrisMode">Caos</span></strong>
+                                </div>
+                                
+                                <div id="tetrisPlayers" style="margin-top: 20px;">
+                                    <strong>Jugadores activos:</strong>
+                                </div>
+                                
+                                <div class="tetris-controls">
+                                    <strong>Controles:</strong><br>
+                                    ← → : Mover<br>
+                                    ↓ : Bajar rápido<br>
+                                    ↑ : Rotar<br>
+                                    ESPACIO : Drop
+                                </div>
+                            </div>
+                            
+                            <div id="tetrisBoard" class="tetris-board"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CAPTCHA WINDOW -->
+            <div id="captchaWindow" class="window" style="left: 200px; top: 100px; width: 700px; height: 600px;">
+                <div class="window-header" onmousedown="startDrag(event, 'captchaWindow')">
+                    <div class="window-title">🤖 Captcha Game - 199 Niveles</div>
+                    <div class="window-controls">
+                        <div class="window-control" onclick="minimizeWindow('captchaWindow')">−</div>
+                        <div class="window-control close" onclick="closeWindow('captchaWindow')">×</div>
+                    </div>
+                </div>
+                <div class="window-content" style="overflow: auto; background: white;">
+                    <div id="captchaGamePage"></div>
+                </div>
+            </div>
+
+            <!-- POWERPOINT WINDOW -->
+            <div id="powerpointWindow" class="window" style="left: 50px; top: 50px; width: 800px; height: 600px;">
+                <div class="window-header" onmousedown="startDrag(event, 'powerpointWindow')">
+                    <div class="window-title">📊 PowerPoint</div>
+                    <div class="window-controls">
+                        <div class="window-control" onclick="minimizeWindow('powerpointWindow')">−</div>
+                        <div class="window-control close" onclick="closeWindow('powerpointWindow')">×</div>
+                    </div>
+                </div>
+                <div class="window-content" style="display: flex; align-items: center; justify-content: center; font-size: 24px; color: #999; background: #f5f5f5;">
+                    📊 PowerPoint Disponible
+                </div>
+            </div>
+
+            <!-- NOTEPAD WINDOW -->
+            <div id="notepadWindow" class="window" style="left: 150px; top: 150px; width: 600px; height: 400px;">
+                <div class="window-header" onmousedown="startDrag(event, 'notepadWindow')">
+                    <div class="window-title">📝 Bloc de notas</div>
+                    <div class="window-controls">
+                        <div class="window-control" onclick="minimizeWindow('notepadWindow')">−</div>
+                        <div class="window-control close" onclick="closeWindow('notepadWindow')">×</div>
+                    </div>
+                </div>
+                <div class="window-content">
+                    <textarea style="width: 100%; height: 100%; border: none; font-family: monospace; font-size: 14px; padding: 20px; resize: none;" id="notepadText" placeholder="Escribe aquí..."></textarea>
+                </div>
+            </div>
+
+            <div class="taskbar">
+                <div class="start-button" onclick="alert('🪟 Windows Gaming Edition v5.1 - FIXED')">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                        <path d="M3,12V6.75L9,5.43V11.91L3,12M20,3V11.75L10,11.9V5.21L20,3M3,13L9,13.09V19.9L3,18.75V13M20,13.25V22L10,20.09V13.1L20,13.25Z"/>
+                    </svg>
+                </div>
+                <div class="taskbar-app" onclick="openWindow('powerpoint')">📊 PowerPoint</div>
+                <div class="taskbar-app" onclick="openFolder('games')">🎮 Games</div>
+                <div class="taskbar-app" onclick="openWindow('notepad')">📝 Notepad</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let peer, connections = [], isHost = false, myId = '', players = {}, myColor = '';
+        const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A'];
+        let colorIndex = 0;
+        const processedClicks = new Map();
+        const CLICK_TIMEOUT = 3000;
+        let logVisible = false;
+        let draggedWindow = null, dragOffsetX = 0, dragOffsetY = 0, isDragging = false;
+
+        // CAPTCHA GAME
+        let currentLevel = 1;
+        const MAX_LEVELS = 199;
+        let gameData = {};
+
+        // TETRIS GAME
+        const tetris = {
+            mode: 'chaos',
+            board: Array(20).fill().map(() => Array(10).fill(0)),
+            currentPiece: null,
+            currentX: 0,
+            currentY: 0,
+            score: 0,
+            level: 1,
+            lines: 0,
+            gameLoop: null,
+            speed: 1000,
+            playerPieces: {},
+            
+            pieces: {
+                I: [[1,1,1,1]],
+                O: [[1,1],[1,1]],
+                T: [[0,1,0],[1,1,1]],
+                S: [[0,1,1],[1,1,0]],
+                Z: [[1,1,0],[0,1,1]],
+                J: [[1,0,0],[1,1,1]],
+                L: [[0,0,1],[1,1,1]]
+            },
+
+            colors: {
+                I: '#00f0f0',
+                O: '#f0f000',
+                T: '#a000f0',
+                S: '#00f000',
+                Z: '#f00000',
+                J: '#0000f0',
+                L: '#f0a000'
+            },
+
+            init() {
+                this.createBoard();
+                this.updateDisplay();
+            },
+
+            createBoard() {
+                const boardEl = document.getElementById('tetrisBoard');
+                boardEl.innerHTML = '';
+                for (let y = 0; y < 20; y++) {
+                    for (let x = 0; x < 10; x++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'tetris-cell';
+                        cell.id = `cell-${y}-${x}`;
+                        boardEl.appendChild(cell);
+                    }
+                }
+            },
+
+            setMode(mode) {
+                this.mode = mode;
+                document.getElementById('chaosModeBtn').classList.toggle('active', mode === 'chaos');
+                document.getElementById('normalModeBtn').classList.toggle('active', mode === 'normal');
+                document.getElementById('tetrisMode').textContent = mode === 'chaos' ? 'Caos' : 'Normal';
+                this.reset();
+                this.broadcastTetris('setMode', { mode });
+            },
+
+            start() {
+                if (this.gameLoop) return;
+                if (this.mode === 'chaos') {
+                    this.spawnPiece();
+                } else {
+                    Object.keys(players).forEach(playerId => {
+                        this.spawnPlayerPiece(playerId);
+                    });
+                }
+                this.gameLoop = setInterval(() => this.update(), this.speed);
+            },
+
+            update() {
+                if (this.mode === 'chaos') {
+                    this.moveDown();
+                } else {
+                    Object.keys(this.playerPieces).forEach(playerId => {
+                        this.movePlayerPieceDown(playerId);
+                    });
+                }
+            },
+
+            spawnPiece() {
+                const pieceTypes = Object.keys(this.pieces);
+                const randomType = pieceTypes[Math.floor(Math.random() * pieceTypes.length)];
+                this.currentPiece = {
+                    type: randomType,
+                    shape: JSON.parse(JSON.stringify(this.pieces[randomType])),
+                    color: this.colors[randomType]
+                };
+                this.currentX = 3;
+                this.currentY = 0;
+                if (this.collision()) this.gameOver();
+                this.render();
+            },
+
+            spawnPlayerPiece(playerId) {
+                const pieceTypes = Object.keys(this.pieces);
+                const randomType = pieceTypes[Math.floor(Math.random() * pieceTypes.length)];
+                const playerColor = players[playerId]?.color || this.colors[randomType];
+                this.playerPieces[playerId] = {
+                    type: randomType,
+                    shape: JSON.parse(JSON.stringify(this.pieces[randomType])),
+                    color: playerColor,
+                    x: 3 + (Object.keys(this.playerPieces).length * 2),
+                    y: 0
+                };
+                this.render();
+            },
+
+            moveDown() {
+                this.currentY++;
+                if (this.collision()) {
+                    this.currentY--;
+                    this.merge();
+                    this.clearLines();
+                    this.spawnPiece();
+                }
+                this.render();
+                this.broadcastTetris('state', this.getState());
+            },
+
+            movePlayerPieceDown(playerId) {
+                const piece = this.playerPieces[playerId];
+                if (!piece) return;
+                piece.y++;
+                if (this.collisionPlayer(playerId)) {
+                    piece.y--;
+                    this.mergePlayerPiece(playerId);
+                    this.clearLines();
+                    this.spawnPlayerPiece(playerId);
+                }
+                this.render();
+            },
+
+            move(dir, playerId = null) {
+                if (this.mode === 'chaos') {
+                    this.currentX += dir;
+                    if (this.collision()) this.currentX -= dir;
+                    this.render();
+                    this.broadcastTetris('move', { dir });
+                } else if (playerId && this.playerPieces[playerId]) {
+                    this.playerPieces[playerId].x += dir;
+                    if (this.collisionPlayer(playerId)) this.playerPieces[playerId].x -= dir;
+                    this.render();
+                    this.broadcastTetris('movePlayer', { playerId, dir });
+                }
+            },
+
+            rotate(playerId = null) {
+                if (this.mode === 'chaos') {
+                    const rotated = this.currentPiece.shape[0].map((_, i) =>
+                        this.currentPiece.shape.map(row => row[i]).reverse()
+                    );
+                    const backup = this.currentPiece.shape;
+                    this.currentPiece.shape = rotated;
+                    if (this.collision()) this.currentPiece.shape = backup;
+                    this.render();
+                    this.broadcastTetris('rotate', {});
+                } else if (playerId && this.playerPieces[playerId]) {
+                    const piece = this.playerPieces[playerId];
+                    const rotated = piece.shape[0].map((_, i) =>
+                        piece.shape.map(row => row[i]).reverse()
+                    );
+                    const backup = piece.shape;
+                    piece.shape = rotated;
+                    if (this.collisionPlayer(playerId)) piece.shape = backup;
+                    this.render();
+                    this.broadcastTetris('rotatePlayer', { playerId });
+                }
+            },
+
+            drop(playerId = null) {
+                if (this.mode === 'chaos') {
+                    while (!this.collision()) this.currentY++;
+                    this.currentY--;
+                    this.merge();
+                    this.clearLines();
+                    this.spawnPiece();
+                    this.render();
+                    this.broadcastTetris('drop', {});
+                } else if (playerId && this.playerPieces[playerId]) {
+                    const piece = this.playerPieces[playerId];
+                    while (!this.collisionPlayer(playerId)) piece.y++;
+                    piece.y--;
+                    this.mergePlayerPiece(playerId);
+                    this.clearLines();
+                    this.spawnPlayerPiece(playerId);
+                    this.render();
+                    this.broadcastTetris('dropPlayer', { playerId });
+                }
+            },
+
+            collision() {
+                for (let y = 0; y < this.currentPiece.shape.length; y++) {
+                    for (let x = 0; x < this.currentPiece.shape[y].length; x++) {
+                        if (this.currentPiece.shape[y][x]) {
+                            const newX = this.currentX + x;
+                            const newY = this.currentY + y;
+                            if (newX < 0 || newX >= 10 || newY >= 20) return true;
+                            if (newY >= 0 && this.board[newY][newX]) return true;
+                        }
+                    }
+                }
+                return false;
+            },
+
+            collisionPlayer(playerId) {
+                const piece = this.playerPieces[playerId];
+                if (!piece) return true;
+                for (let y = 0; y < piece.shape.length; y++) {
+                    for (let x = 0; x < piece.shape[y].length; x++) {
+                        if (piece.shape[y][x]) {
+                            const newX = piece.x + x;
+                            const newY = piece.y + y;
+                            if (newX < 0 || newX >= 10 || newY >= 20) return true;
+                            if (newY >= 0 && this.board[newY][newX]) return true;
+                        }
+                    }
+                }
+                return false;
+            },
+
+            merge() {
+                for (let y = 0; y < this.currentPiece.shape.length; y++) {
+                    for (let x = 0; x < this.currentPiece.shape[y].length; x++) {
+                        if (this.currentPiece.shape[y][x]) {
+                            const boardY = this.currentY + y;
+                            const boardX = this.currentX + x;
+                            if (boardY >= 0) this.board[boardY][boardX] = this.currentPiece.color;
+                        }
+                    }
+                }
+            },
+
+            mergePlayerPiece(playerId) {
+                const piece = this.playerPieces[playerId];
+                if (!piece) return;
+                for (let y = 0; y < piece.shape.length; y++) {
+                    for (let x = 0; x < piece.shape[y].length; x++) {
+                        if (piece.shape[y][x]) {
+                            const boardY = piece.y + y;
+                            const boardX = piece.x + x;
+                            if (boardY >= 0 && boardY < 20 && boardX >= 0 && boardX < 10) {
+                                this.board[boardY][boardX] = piece.color;
+                            }
+                        }
+                    }
+                }
+            },
+
+            clearLines() {
+                let linesCleared = 0;
+                for (let y = 19; y >= 0; y--) {
+                    if (this.board[y].every(cell => cell !== 0)) {
+                        this.board.splice(y, 1);
+                        this.board.unshift(Array(10).fill(0));
+                        linesCleared++;
+                        y++;
+                    }
+                }
+                if (linesCleared > 0) {
+                    this.lines += linesCleared;
+                    this.score += linesCleared * 100 * this.level;
+                    this.level = Math.floor(this.lines / 10) + 1;
+                    this.updateDisplay();
+                }
+            },
+
+            render() {
+                for (let y = 0; y < 20; y++) {
+                    for (let x = 0; x < 10; x++) {
+                        const cell = document.getElementById(`cell-${y}-${x}`);
+                        if (this.board[y][x]) {
+                            cell.style.backgroundColor = this.board[y][x];
+                            cell.classList.add('filled');
+                        } else {
+                            cell.style.backgroundColor = '#111';
+                            cell.classList.remove('filled');
+                        }
+                    }
+                }
+
+                if (this.mode === 'chaos' && this.currentPiece) {
+                    for (let y = 0; y < this.currentPiece.shape.length; y++) {
+                        for (let x = 0; x < this.currentPiece.shape[y].length; x++) {
+                            if (this.currentPiece.shape[y][x]) {
+                                const boardY = this.currentY + y;
+                                const boardX = this.currentX + x;
+                                if (boardY >= 0 && boardY < 20 && boardX >= 0 && boardX < 10) {
+                                    const cell = document.getElementById(`cell-${boardY}-${boardX}`);
+                                    cell.style.backgroundColor = this.currentPiece.color;
+                                    cell.classList.add('filled');
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (this.mode === 'normal') {
+                    Object.values(this.playerPieces).forEach(piece => {
+                        if (!piece) return;
+                        for (let y = 0; y < piece.shape.length; y++) {
+                            for (let x = 0; x < piece.shape[y].length; x++) {
+                                if (piece.shape[y][x]) {
+                                    const boardY = piece.y + y;
+                                    const boardX = piece.x + x;
+                                    if (boardY >= 0 && boardY < 20 && boardX >= 0 && boardX < 10) {
+                                        const cell = document.getElementById(`cell-${boardY}-${boardX}`);
+                                        cell.style.backgroundColor = piece.color;
+                                        cell.classList.add('filled');
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            },
+
+            updateDisplay() {
+                document.getElementById('tetrisScore').textContent = this.score;
+                document.getElementById('tetrisLevel').textContent = this.level;
+                document.getElementById('tetrisLines').textContent = this.lines;
+                const playersEl = document.getElementById('tetrisPlayers');
+                let html = '<strong>Jugadores activos:</strong>';
+                Object.keys(players).forEach(id => {
+                    const isActive = this.mode === 'normal' && this.playerPieces[id];
+                    html += `<div class="tetris-player-indicator ${isActive ? 'active' : ''}">
+                        <div style="width: 15px; height: 15px; background: ${players[id].color}; border-radius: 50%;"></div>
+                        <span>${players[id].name}</span>
+                    </div>`;
+                });
+                playersEl.innerHTML = html;
+            },
+
+            reset() {
+                this.board = Array(20).fill().map(() => Array(10).fill(0));
+                this.currentPiece = null;
+                this.playerPieces = {};
+                this.score = 0;
+                this.level = 1;
+                this.lines = 0;
+                if (this.gameLoop) {
+                    clearInterval(this.gameLoop);
+                    this.gameLoop = null;
+                }
+                this.render();
+                this.updateDisplay();
+            },
+
+            gameOver() {
+                clearInterval(this.gameLoop);
+                this.gameLoop = null;
+                alert(`Game Over!\nScore: ${this.score}\nLines: ${this.lines}`);
+                this.reset();
+            },
+
+            getState() {
+                return {
+                    board: this.board,
+                    currentPiece: this.currentPiece,
+                    currentX: this.currentX,
+                    currentY: this.currentY,
+                    playerPieces: this.playerPieces,
+                    score: this.score,
+                    level: this.level,
+                    lines: this.lines,
+                    mode: this.mode
+                };
+            },
+
+            setState(state) {
+                this.board = state.board;
+                this.currentPiece = state.currentPiece;
+                this.currentX = state.currentX;
+                this.currentY = state.currentY;
+                this.playerPieces = state.playerPieces || {};
+                this.score = state.score;
+                this.level = state.level;
+                this.lines = state.lines;
+                this.mode = state.mode || 'chaos';
+                this.render();
+                this.updateDisplay();
+            },
+
+            broadcastTetris(action, data) {
+                connections.forEach(conn => {
+                    if (conn.open) conn.send({ type: 'tetrisAction', action, data });
+                });
+            },
+
+            handleRemoteAction(action, data) {
+                switch(action) {
+                    case 'state':
+                        this.setState(data);
+                        break;
+                    case 'move':
+                        this.currentX += data.dir;
+                        if (this.collision()) this.currentX -= data.dir;
+                        this.render();
+                        break;
+                    case 'movePlayer':
+                        if (this.playerPieces[data.playerId]) {
+                            this.playerPieces[data.playerId].x += data.dir;
+                            if (this.collisionPlayer(data.playerId)) {
+                                this.playerPieces[data.playerId].x -= data.dir;
+                            }
+                            this.render();
+                        }
+                        break;
+                    case 'rotate':
+                        const rotated = this.currentPiece.shape[0].map((_, i) =>
+                            this.currentPiece.shape.map(row => row[i]).reverse()
+                        );
+                        const backup = this.currentPiece.shape;
+                        this.currentPiece.shape = rotated;
+                        if (this.collision()) this.currentPiece.shape = backup;
+                        this.render();
+                        break;
+                    case 'rotatePlayer':
+                        if (this.playerPieces[data.playerId]) {
+                            const piece = this.playerPieces[data.playerId];
+                            const rotated = piece.shape[0].map((_, i) =>
+                                piece.shape.map(row => row[i]).reverse()
+                            );
+                            const backup = piece.shape;
+                            piece.shape = rotated;
+                            if (this.collisionPlayer(data.playerId)) piece.shape = backup;
+                            this.render();
+                        }
+                        break;
+                    case 'setMode':
+                        this.mode = data.mode;
+                        document.getElementById('chaosModeBtn').classList.toggle('active', data.mode === 'chaos');
+                        document.getElementById('normalModeBtn').classList.toggle('active', data.mode === 'normal');
+                        document.getElementById('tetrisMode').textContent = data.mode === 'chaos' ? 'Caos' : 'Normal';
+                        this.reset();
+                        break;
+                }
+            }
+        };
+
+        // CAPTCHA GAME
+        function initCaptchaGame() {
+            loadCaptchaLevel(currentLevel);
+        }
+
+        function loadCaptchaLevel(level) {
+            const container = document.getElementById('captchaGamePage');
+            let html = `<div class="captcha-container">
+                <div class="captcha-header">
+                    <div style="font-size:24px;font-weight:bold;color:#4285f4;">🤖 CAPTCHA Challenge</div>
+                    <div style="font-size:18px;color:#5f6368;margin:10px 0;">Nivel ${level} de ${MAX_LEVELS}</div>
+                    <div class="captcha-progress">
+                        <div class="captcha-progress-bar" style="width:${(level/MAX_LEVELS)*100}%"></div>
+                    </div>
+                </div>
+                <div style="margin: 20px 0;">`;
+            
+            if (level % 2 === 0) {
+                gameData.checkboxChecked = false;
+                html += `<div style="font-size:16px;font-weight:500;margin-bottom:15px;">Verifica que no eres un robot</div>
+                    <div class="captcha-tile" onclick="toggleCheckbox()" style="max-width: 300px; margin: 0 auto; cursor: pointer; padding: 20px; background: white;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div id="captchaCheckbox" style="width: 28px; height: 28px; border: 2px solid #5f6368; border-radius: 4px;"></div>
+                            <div>No soy un robot</div>
+                        </div>
+                    </div>`;
+            } else {
+                const themes = [
+                    { name: '🚦 semáforos', emoji: '🚦', items: ['🚦','🚗','🏠','🌳','🚦','👤','🚦','🏢','🌞'] }
+                ];
+                const theme = themes[0];
+                gameData.imageSelectTarget = theme.emoji;
+                gameData.imageSelectSelected = [];
+                html += `<div style="font-size:16px;font-weight:500;margin-bottom:15px;">Selecciona todos los ${theme.name}</div><div class="captcha-grid">`;
+                theme.items.forEach((item, i) => {
+                    html += `<div class="captcha-tile" onclick="selectImage(${i},'${item}')">${item}</div>`;
+                });
+                html += `</div><button class="captcha-btn" onclick="verifyImageSelect()">Verificar</button>`;
+            }
+            
+            html += `</div></div>`;
+            container.innerHTML = html;
+        }
+
+        function toggleCheckbox() {
+            gameData.checkboxChecked = !gameData.checkboxChecked;
+            const box = document.getElementById('captchaCheckbox');
+            if (gameData.checkboxChecked) {
+                box.style.background = '#4285f4';
+                box.style.borderColor = '#4285f4';
+                box.innerHTML = '<div style="color: white; font-size: 20px; text-align: center;">✓</div>';
+                setTimeout(() => {
+                    nextLevel();
+                    broadcastCaptchaAction('nextLevel', currentLevel);
+                }, 500);
+            } else {
+                box.style.background = '';
+                box.style.borderColor = '#5f6368';
+                box.innerHTML = '';
+            }
+        }
+
+        function selectImage(index, item) {
+            const tiles = document.querySelectorAll('.captcha-tile');
+            if (gameData.imageSelectSelected.includes(index)) {
+                gameData.imageSelectSelected = gameData.imageSelectSelected.filter(i => i !== index);
+                tiles[index].classList.remove('selected');
+            } else {
+                gameData.imageSelectSelected.push(index);
+                tiles[index].classList.add('selected');
+            }
+            broadcastCaptchaAction('selectImage', { index, selected: gameData.imageSelectSelected });
+        }
+
+        function verifyImageSelect() {
+            const tiles = document.querySelectorAll('.captcha-tile');
+            let correct = true;
+            tiles.forEach((tile, i) => {
+                const isTarget = tile.textContent.trim() === gameData.imageSelectTarget;
+                const isSelected = gameData.imageSelectSelected.includes(i);
+                if (isTarget !== isSelected) {
+                    tile.classList.add('wrong');
+                    correct = false;
+                } else if (isTarget) {
+                    tile.classList.add('correct');
+                }
+            });
+            if (correct) {
+                setTimeout(() => {
+                    nextLevel();
+                    broadcastCaptchaAction('nextLevel', currentLevel);
+                }, 500);
+            } else {
+                setTimeout(() => {
+                    gameData.imageSelectSelected = [];
+                    loadCaptchaLevel(currentLevel);
+                }, 1500);
+            }
+        }
+
+        function nextLevel() {
+            currentLevel++;
+            if (currentLevel > MAX_LEVELS) {
+                alert('🎉 ¡Completaste los 199 niveles!');
+                currentLevel = 1;
+            }
+            loadCaptchaLevel(currentLevel);
+        }
+
+        function broadcastCaptchaAction(action, data) {
+            connections.forEach(conn => {
+                if (conn.open) {
+                    conn.send({
+                        type: 'captchaAction',
+                        action: action,
+                        data: data
+                    });
+                }
+            });
+        }
+
+        function handleCaptchaAction(data) {
+            switch(data.action) {
+                case 'selectImage':
+                    gameData.imageSelectSelected = data.data.selected;
+                    const tiles = document.querySelectorAll('.captcha-tile');
+                    tiles.forEach((tile, i) => {
+                        if (data.data.selected.includes(i)) {
+                            tile.classList.add('selected');
+                        } else {
+                            tile.classList.remove('selected');
+                        }
+                    });
+                    break;
+                case 'nextLevel':
+                    currentLevel = data.data;
+                    loadCaptchaLevel(currentLevel);
+                    break;
+                case 'syncLevel':
+                    currentLevel = data.data;
+                    if (document.getElementById('captchaWindow').classList.contains('active')) {
+                        loadCaptchaLevel(currentLevel);
+                    }
+                    break;
+            }
+        }
+
+        // WINDOW MANAGEMENT
+        function toggleLog() {
+            logVisible = !logVisible;
+            document.getElementById('debugLog').classList.toggle('hidden', !logVisible);
+            document.getElementById('logBtnIcon').textContent = logVisible ? '🙈' : '👁️';
+        }
+
+        function addLog(msg, type='receive') {
+            const log = document.getElementById('logEntries');
+            if (!log) return;
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            log.insertBefore(entry, log.firstChild);
+            while (log.children.length > 10) log.removeChild(log.lastChild);
+        }
+
+        function openFolder(folderId) {
+            openWindow(folderId);
+        }
+
+        function openGameFromFolder(gameId) {
+            // Cerrar carpeta y abrir juego
+            closeWindow('gamesWindow');
+            openWindow(gameId);
+            addLog(`Abriendo ${gameId} desde carpeta Games`, 'execute');
+        }
+
+        function openWindow(windowId) {
+            const win = document.getElementById(windowId + 'Window');
+            if (win) {
+                win.classList.add('active');
+                
+                // Iniciar juegos al abrir
+                if (windowId === 'tetris' && !tetris.gameLoop) {
+                    tetris.init();
+                    tetris.start();
+                }
+                if (windowId === 'captcha') {
+                    initCaptchaGame();
+                }
+                
+                broadcastWindowAction('open', windowId);
+                addLog(`Ventana ${windowId} abierta`, 'execute');
+            }
+        }
+
+        function closeWindow(windowId) {
+            const win = document.getElementById(windowId);
+            if (win) {
+                win.classList.remove('active');
+                broadcastWindowAction('close', windowId);
+            }
+        }
+
+        function minimizeWindow(windowId) { closeWindow(windowId); }
+
+        function startDrag(e, windowId) {
+            draggedWindow = document.getElementById(windowId);
+            const rect = draggedWindow.getBoundingClientRect();
+            dragOffsetX = e.clientX - rect.left;
+            dragOffsetY = e.clientY - rect.top;
+            isDragging = true;
+            document.addEventListener('mousemove', doDrag);
+            document.addEventListener('mouseup', stopDrag);
+        }
+
+        function doDrag(e) {
+            if (!draggedWindow || !isDragging) return;
+            const newX = e.clientX - dragOffsetX;
+            const newY = e.clientY - dragOffsetY;
+            draggedWindow.style.left = newX + 'px';
+            draggedWindow.style.top = newY + 'px';
+            connections.forEach(c => {
+                if (c.open) c.send({ type: 'windowMove', windowId: draggedWindow.id, x: newX, y: newY });
+            });
+        }
+
+        function stopDrag() {
+            document.removeEventListener('mousemove', doDrag);
+            document.removeEventListener('mouseup', stopDrag);
+            isDragging = false;
+            draggedWindow = null;
+        }
+
+        function broadcastWindowAction(action, windowId) {
+            connections.forEach(c => { 
+                if (c.open) {
+                    c.send({ type: 'windowAction', action, windowId });
+                    addLog(`Enviando acción de ventana: ${action} ${windowId}`, 'send');
+                }
+            });
+        }
+
+        function executeWindowAction(action, windowId) {
+            if (action === 'open') {
+                const win = document.getElementById(windowId + 'Window');
+                if (win) {
+                    win.classList.add('active');
+                    
+                    // Iniciar juegos al abrir remotamente
+                    if (windowId === 'tetris' && !tetris.gameLoop) {
+                        tetris.init();
+                        tetris.start();
+                    }
+                    if (windowId === 'captcha') {
+                        initCaptchaGame();
+                    }
+                    
+                    addLog(`Ventana ${windowId} abierta remotamente`, 'receive');
+                }
+            } else if (action === 'close') {
+                const win = document.getElementById(windowId);
+                if (win) {
+                    win.classList.remove('active');
+                }
+            }
+        }
+
+        // NETWORKING
+        function initPeer() {
+            peer = new Peer({ config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
+            peer.on('open', (id) => {
+                myId = id;
+                document.getElementById('yourId').innerHTML = `<strong style="color:#667eea;">✅ ID:</strong><br>
+                    <div style="background:white;padding:10px;border-radius:5px;margin-top:8px;color:#333;font-weight:bold;font-size:13px;">${id}</div>
+                    <button class="copy-btn" onclick="copyId('${id}')">📋 Copiar</button>`;
+                showStatus('🎉 Sala creada!', 'success');
+            });
+            peer.on('connection', (conn) => { if (isHost && connections.length < 3) setupConnection(conn); });
+            peer.on('error', (err) => { showStatus('❌ Error: ' + err.type, 'error'); });
+        }
+
+        function copyId(id) {
+            navigator.clipboard.writeText(id).then(() => showStatus('✅ ID copiado!', 'success'));
+        }
+
+        function showStatus(msg, type='info') {
+            const s = document.getElementById('status');
+            s.className = `status ${type}`;
+            s.innerHTML = msg;
+        }
+
+        function createRoom() {
+            document.getElementById('createBtn').disabled = true;
+            document.getElementById('joinBtn').disabled = true;
+            isHost = true;
+            myColor = colors[colorIndex++];
+            initPeer();
+            setTimeout(() => {
+                if (myId) {
+                    players[myId] = { color: myColor, name: 'Host (Tú)' };
+                    startGame();
+                }
+            }, 1500);
+        }
+
+        function showJoinForm() {
+            document.getElementById('joinForm').style.display = 'block';
+            document.getElementById('joinBtn').disabled = true;
+            if (!peer) initPeer();
+        }
+
+        function joinRoom() {
+            const roomId = document.getElementById('roomId').value.trim();
+            if (!roomId) { showStatus('⚠️ ID inválido', 'error'); return; }
+            myColor = colors[1];
+            showStatus('⏳ Conectando...', 'info');
+            setTimeout(() => {
+                const conn = peer.connect(roomId, { reliable: true });
+                setupConnection(conn, true);
+            }, 1000);
+        }
+
+        function setupConnection(conn, isClient=false) {
+            conn.on('open', () => {
+                connections.push(conn);
+                addLog('Conectado', 'receive');
+                if (isClient) conn.send({ type: 'join', id: myId, color: myColor });
+                startGame();
+                updateConnectionStatus(true);
+            });
+            conn.on('data', (data) => handleData(data, conn));
+            conn.on('close', () => {
+                connections = connections.filter(c => c !== conn);
+                updateConnectionStatus(connections.length > 0);
+                updatePlayerList();
+            });
+        }
+
+        function handleData(data, sourceConn) {
+            switch(data.type) {
+                case 'join':
+                    if (isHost) {
+                        const newColor = colors[colorIndex++ % colors.length];
+                        const playerNum = Object.keys(players).length;
+                        players[data.id] = { color: newColor, name: `Jugador ${playerNum}` };
+                        sourceConn.send({ 
+                            type: 'init', 
+                            players, 
+                            assignedColor: newColor, 
+                            myId, 
+                            tetrisState: tetris.getState(),
+                            captchaLevel: currentLevel
+                        });
+                        connections.forEach(c => {
+                            if (c !== sourceConn && c.open) c.send({ 
+                                type: 'playerJoined', 
+                                id: data.id, 
+                                color: newColor, 
+                                name: `Jugador ${playerNum}` 
+                            });
+                        });
+                    }
+                    updatePlayerList();
+                    tetris.updateDisplay();
+                    break;
+                case 'init':
+                    players = data.players;
+                    myColor = data.assignedColor;
+                    if (players[myId]) players[myId].color = myColor;
+                    if (data.tetrisState) tetris.setState(data.tetrisState);
+                    currentLevel = data.captchaLevel || 1;
+                    updatePlayerList();
+                    addLog('Estado inicial recibido', 'receive');
+                    break;
+                case 'playerJoined':
+                    players[data.id] = { color: data.color, name: data.name };
+                    updatePlayerList();
+                    tetris.updateDisplay();
+                    break;
+                case 'mouseMove':
+                    updateCursor(data.id, data.x, data.y, data.color);
+                    if (isHost) connections.forEach(c => { if (c !== sourceConn && c.open) try { c.send(data); } catch(e) {} });
+                    break;
+                case 'click':
+                    if (processedClicks.has(data.clickId)) return;
+                    processedClicks.set(data.clickId, Date.now());
+                    setTimeout(() => processedClicks.delete(data.clickId), CLICK_TIMEOUT);
+                    showClickEffect(data.x, data.y, data.color);
+                    if (isHost) connections.forEach(c => { if (c !== sourceConn && c.open) try { c.send(data); } catch(e) {} });
+                    break;
+                case 'windowMove':
+                    const win = document.getElementById(data.windowId);
+                    if (win) { win.style.left = data.x + 'px'; win.style.top = data.y + 'px'; }
+                    if (isHost) connections.forEach(c => { if (c !== sourceConn && c.open) try { c.send(data); } catch(e) {} });
+                    break;
+                case 'windowAction':
+                    executeWindowAction(data.action, data.windowId);
+                    if (isHost) connections.forEach(c => { if (c !== sourceConn && c.open) try { c.send(data); } catch(e) {} });
+                    break;
+                case 'tetrisAction':
+                    tetris.handleRemoteAction(data.action, data.data);
+                    if (isHost) connections.forEach(c => { if (c !== sourceConn && c.open) try { c.send(data); } catch(e) {} });
+                    break;
+                case 'captchaAction':
+                    handleCaptchaAction(data);
+                    if (isHost) connections.forEach(c => { if (c !== sourceConn && c.open) try { c.send(data); } catch(e) {} });
+                    break;
+                case 'textUpdate':
+                    document.getElementById('notepadText').value = data.text;
+                    if (isHost) connections.forEach(c => { if (c !== sourceConn && c.open) try { c.send(data); } catch(e) {} });
+                    break;
+            }
+        }
+
+        function startGame() {
+            if (document.getElementById('gameContainer').style.display === 'block') return;
+            document.getElementById('lobby').style.display = 'none';
+            document.getElementById('gameContainer').style.display = 'block';
+            if (!players[myId]) players[myId] = { color: myColor, name: isHost ? 'Host (Tú)' : 'Tú' };
+            updatePlayerList();
+
+            document.addEventListener('mousemove', (e) => {
+                connections.forEach(c => {
+                    if (c.open) try { c.send({ type: 'mouseMove', id: myId, x: e.clientX, y: e.clientY, color: myColor }); } catch(e) {}
+                });
+            });
+
+            document.addEventListener('click', (e) => {
+                const clickId = `${myId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+                processedClicks.set(clickId, Date.now());
+                showClickEffect(e.clientX, e.clientY, myColor);
+                connections.forEach(c => {
+                    if (c.open) try { c.send({ type: 'click', id: myId, clickId, x: e.clientX, y: e.clientY, color: myColor }); } catch(e) {}
+                });
+                setTimeout(() => processedClicks.delete(clickId), CLICK_TIMEOUT);
+            });
+
+            // Tetris controls
+            document.addEventListener('keydown', (e) => {
+                if (!document.getElementById('tetrisWindow').classList.contains('active')) return;
+                
+                switch(e.key) {
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        tetris.move(-1, tetris.mode === 'normal' ? myId : null);
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        tetris.move(1, tetris.mode === 'normal' ? myId : null);
+                        break;
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        if (tetris.mode === 'chaos') tetris.moveDown();
+                        else if (tetris.playerPieces[myId]) tetris.movePlayerPieceDown(myId);
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        tetris.rotate(tetris.mode === 'normal' ? myId : null);
+                        break;
+                    case ' ':
+                        e.preventDefault();
+                        tetris.drop(tetris.mode === 'normal' ? myId : null);
+                        break;
+                }
+            });
+
+            const notepad = document.getElementById('notepadText');
+            if (notepad) {
+                notepad.addEventListener('input', (e) => {
+                    connections.forEach(c => { if (c.open) c.send({ type: 'textUpdate', text: e.target.value }); });
+                });
+            }
+        }
+
+        function updateCursor(playerId, x, y, color) {
+            if (playerId === myId) return;
+            let cursor = document.getElementById('cursor-' + playerId);
+            if (!cursor) {
+                cursor = document.createElement('div');
+                cursor.id = 'cursor-' + playerId;
+                cursor.className = 'cursor';
+                cursor.style.backgroundColor = color;
+                const label = document.createElement('div');
+                label.className = 'cursor-label';
+                label.textContent = players[playerId]?.name || 'Player';
+                cursor.appendChild(label);
+                document.body.appendChild(cursor);
+            }
+            cursor.style.left = x + 'px';
+            cursor.style.top = y + 'px';
+        }
+
+        function showClickEffect(x, y, color) {
+            const effect = document.createElement('div');
+            effect.className = 'click-effect';
+            effect.style.left = x + 'px';
+            effect.style.top = y + 'px';
+            effect.style.border = `5px solid ${color}`;
+            effect.style.boxShadow = `0 0 30px ${color}`;
+            document.body.appendChild(effect);
+            setTimeout(() => effect.remove(), 800);
+        }
+
+        function updatePlayerList() {
+            const playerList = document.getElementById('playerList');
+            const playerCount = Object.keys(players).length;
+            playerList.innerHTML = '';
+            document.querySelector('#playerInfo h3').textContent = `👥 ${playerCount}/4`;
+            for (let id in players) {
+                const player = players[id];
+                const div = document.createElement('div');
+                div.className = 'player-item';
+                div.innerHTML = `
+                    <span class="player-color" style="background-color:${player.color}"></span>
+                    <span style="font-size:13px;font-weight:500;">${id === myId ? '🎮 ' : ''}${player.name}</span>
+                `;
+                playerList.appendChild(div);
+            }
+        }
+
+        function updateConnectionStatus(isConnected) {
+            const dot = document.querySelector('.status-dot');
+            const text = document.getElementById('connText');
+            if (isConnected || isHost || connections.length > 0) {
+                dot.className = 'status-dot status-connected';
+                text.textContent = `✅ ${connections.length}`;
+            }
+        }
+
+        setInterval(() => {
+            const now = Date.now();
+            for (let [clickId, timestamp] of processedClicks.entries()) {
+                if (now - timestamp > CLICK_TIMEOUT) processedClicks.delete(clickId);
+            }
+        }, 1000);
+
+        console.log('%c🎮 Windows Gaming Edition v5.1 - FIXED', 'font-size:20px;color:#0078d4;font-weight:bold;');
+        console.log('%c✅ Carpeta Games sincronizada', 'color:#4CAF50;');
+        console.log('%c✅ Captcha Game sincronizado', 'color:#4CAF50;');
+    </script>
+</body>
+</html>
